@@ -1,4 +1,8 @@
-Author:
+Original authors:
 
 * Selwin Ong (https://github.com/selwin)
 * Loisaida Sam Sandberg (https://github.com/loisaidasam)
+
+Maintainer (user-agents-ng):
+
+* Saif Ali (https://github.com/SAKMZ)
