@@ -1,7 +1,6 @@
-from collections import namedtuple
+from typing import Any, NamedTuple, Optional
 
 from ua_parser import user_agent_parser
-from .compat import string_types
 
 
 MOBILE_DEVICE_FAMILIES = (
@@ -73,33 +72,37 @@ TOUCH_CAPABLE_DEVICE_FAMILIES = (
     'Kindle'
 )
 
-EMAIL_PROGRAM_FAMILIES = set((
+EMAIL_PROGRAM_FAMILIES = {
     'Outlook',
     'Windows Live Mail',
     'AirMail',
     'Apple Mail',
-    'Outlook',
     'Thunderbird',
     'Lightning',
     'ThunderBrowse',
-    'Windows Live Mail',
     'The Bat!',
     'Lotus Notes',
     'IBM Notes',
     'Barca',
     'MailBar',
     'kmail2',
-    'YahooMobileMail'
-))
+    'YahooMobileMail',
+}
 
-def verify_attribute(attribute):
-    if isinstance(attribute, string_types) and attribute.isdigit():
+
+def verify_attribute(attribute: Any) -> Any:
+    if isinstance(attribute, str) and attribute.isdigit():
         return int(attribute)
 
     return attribute
 
 
-def parse_version(major=None, minor=None, patch=None, patch_minor=None):
+def parse_version(
+    major: Optional[str] = None,
+    minor: Optional[str] = None,
+    patch: Optional[str] = None,
+    patch_minor: Optional[str] = None,
+) -> tuple:
     # Returns version number tuple, attributes will be integer if they're numbers
     major = verify_attribute(major)
     minor = verify_attribute(minor)
@@ -111,58 +114,79 @@ def parse_version(major=None, minor=None, patch=None, patch_minor=None):
     )
 
 
-Browser = namedtuple('Browser', ['family', 'version', 'version_string'])
+class Browser(NamedTuple):
+    family: str
+    version: tuple
+    version_string: str
 
 
-def parse_browser(family, major=None, minor=None, patch=None, patch_minor=None):
+def parse_browser(
+    family: str,
+    major: Optional[str] = None,
+    minor: Optional[str] = None,
+    patch: Optional[str] = None,
+    patch_minor: Optional[str] = None,
+) -> Browser:
     # Returns a browser object
     version = parse_version(major, minor, patch)
     version_string = '.'.join([str(v) for v in version])
     return Browser(family, version, version_string)
 
 
-OperatingSystem = namedtuple('OperatingSystem', ['family', 'version', 'version_string'])
+class OperatingSystem(NamedTuple):
+    family: str
+    version: tuple
+    version_string: str
 
 
-def parse_operating_system(family, major=None, minor=None, patch=None, patch_minor=None):
+def parse_operating_system(
+    family: str,
+    major: Optional[str] = None,
+    minor: Optional[str] = None,
+    patch: Optional[str] = None,
+    patch_minor: Optional[str] = None,
+) -> OperatingSystem:
     version = parse_version(major, minor, patch)
     version_string = '.'.join([str(v) for v in version])
     return OperatingSystem(family, version, version_string)
 
 
-Device = namedtuple('Device', ['family', 'brand', 'model'])
+class Device(NamedTuple):
+    family: str
+    brand: Optional[str]
+    model: Optional[str]
 
 
-def parse_device(family, brand, model):
+def parse_device(family: str, brand: Optional[str], model: Optional[str]) -> Device:
     return Device(family, brand, model)
 
 
-class UserAgent(object):
+class UserAgent:
 
-    def __init__(self, user_agent_string):
+    def __init__(self, user_agent_string: str):
         ua_dict = user_agent_parser.Parse(user_agent_string)
         self.ua_string = user_agent_string
         self.os = parse_operating_system(**ua_dict['os'])
         self.browser = parse_browser(**ua_dict['user_agent'])
         self.device = parse_device(**ua_dict['device'])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{device} / {os} / {browser}".format(
             device=self.get_device(),
             os=self.get_os(),
             browser=self.get_browser()
         )
 
-    def __unicode__(self):
-        return unicode(str(self))
+    def __repr__(self) -> str:
+        return f'<UserAgent: {self.ua_string}>'
 
-    def _is_android_tablet(self):
+    def _is_android_tablet(self) -> bool:
         # Newer Android tablets don't have "Mobile" in their user agent string,
         # older ones like Galaxy Tab still have "Mobile" though they're not
         return ('Mobile Safari' not in self.ua_string and
                 self.browser.family != "Firefox Mobile")
 
-    def _is_blackberry_touch_capable_device(self):
+    def _is_blackberry_touch_capable_device(self) -> bool:
         # A helper to determine whether a BB phone has touch capabilities
         # Blackberry Bold Touch series begins with 99XX
         if 'Blackberry 99' in self.device.family:
@@ -171,17 +195,17 @@ class UserAgent(object):
             return True
         return False
 
-    def get_device(self):
+    def get_device(self) -> str:
         return self.is_pc and "PC" or self.device.family
 
-    def get_os(self):
+    def get_os(self) -> str:
         return ("%s %s" % (self.os.family, self.os.version_string)).strip()
 
-    def get_browser(self):
+    def get_browser(self) -> str:
         return ("%s %s" % (self.browser.family, self.browser.version_string)).strip()
 
     @property
-    def is_tablet(self):
+    def is_tablet(self) -> bool:
         if self.device.family in TABLET_DEVICE_FAMILIES:
             return True
         if self.device.brand in TABLET_DEVICE_BRANDS:
@@ -197,7 +221,7 @@ class UserAgent(object):
         return False
 
     @property
-    def is_mobile(self):
+    def is_mobile(self) -> bool:
         # First check for mobile device and mobile browser families
         if self.device.family in MOBILE_DEVICE_FAMILIES:
             return True
@@ -228,7 +252,7 @@ class UserAgent(object):
         return False
 
     @property
-    def is_touch_capable(self):
+    def is_touch_capable(self) -> bool:
         # TODO: detect touch capable Nokia devices
         if self.os.family in TOUCH_CAPABLE_OS_FAMILIES:
             return True
@@ -244,7 +268,7 @@ class UserAgent(object):
         return False
 
     @property
-    def is_pc(self):
+    def is_pc(self) -> bool:
         if self.device.family in MOBILE_DEVICE_FAMILIES or \
            self.device.family in TABLET_DEVICE_FAMILIES or \
            self.device.brand in TABLET_DEVICE_BRANDS:
@@ -268,13 +292,13 @@ class UserAgent(object):
         return False
 
     @property
-    def is_bot(self):
+    def is_bot(self) -> bool:
         return self.device.family == 'Spider'
 
     @property
-    def is_email_client(self):
+    def is_email_client(self) -> bool:
         return self.browser.family in EMAIL_PROGRAM_FAMILIES
 
 
-def parse(user_agent_string):
+def parse(user_agent_string: str) -> UserAgent:
     return UserAgent(user_agent_string)

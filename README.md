@@ -1,28 +1,46 @@
-Python User Agents
-==================
+# user-agents-ng
 
-`user_agents` is a Python library that provides an easy way to identify/detect devices like mobile phones, tablets and their capabilities by parsing (browser/HTTP) user agent strings. The goal is to reliably detect whether:
+[![CI](https://github.com/SAKMZ/python-user-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/SAKMZ/python-user-agents/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/user-agents-ng.svg)](https://pypi.org/project/user-agents-ng/)
+
+> **A maintained, drop-in successor to [`user-agents`](https://pypi.org/project/user-agents/).**
+> The original [`selwin/python-user-agents`](https://github.com/selwin/python-user-agents)
+> has had no release since 2020. `user-agents-ng` picks up where it left off:
+> modern packaging, type hints, and tested support for Python 3.9–3.14.
+> **The import stays the same (`from user_agents import parse`) — just change what you `pip install`.**
+
+`user_agents` is a Python library that provides an easy way to identify/detect
+devices like mobile phones, tablets and their capabilities by parsing
+(browser/HTTP) user agent strings. The goal is to reliably detect whether:
 
 * User agent is a mobile, tablet or PC based device
 * User agent has touch capabilities (has touch screen)
 
-`user_agents` relies on the excellent [ua-parser](https://github.com/ua-parser/uap-python) to do the actual parsing of the raw user agent string.
+`user_agents` relies on the excellent [ua-parser](https://github.com/ua-parser/uap-python)
+to do the actual parsing of the raw user agent string.
 
-Installation
-------------
+## Installation
 
-![Build status](https://secure.travis-ci.org/selwin/python-user-agents.png)
+`user-agents-ng` is hosted on [PyPI](https://pypi.org/project/user-agents-ng/) and can be installed with:
 
-`user-agents` is hosted on [PyPI](http://pypi.python.org/pypi/user-agents/) and can be installed as such:
+    pip install user-agents-ng
 
-    pip install pyyaml ua-parser user-agents
+### Migrating from `user-agents`
 
-Alternatively, you can also get the latest source code from [Github](https://github.com/selwin/python-user-agents) and install it manually.
+`user-agents-ng` is a drop-in replacement. Swap the dependency and your code
+keeps working unchanged:
 
-Usage
------
+    pip uninstall user-agents
+    pip install user-agents-ng
 
-Various basic information that can help you identify visitors can be accessed `browser`, `device` and `os` attributes. For example:
+```python
+from user_agents import parse  # <- unchanged
+```
+
+## Usage
+
+Various basic information that can help you identify visitors can be accessed via the
+`browser`, `device` and `os` attributes. For example:
 
 ```python
 from user_agents import parse
@@ -32,19 +50,19 @@ ua_string = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_1 like Mac OS X) AppleWebKit/5
 user_agent = parse(ua_string)
 
 # Accessing user agent's browser attributes
-user_agent.browser  # returns Browser(family=u'Mobile Safari', version=(5, 1), version_string='5.1')
+user_agent.browser  # returns Browser(family='Mobile Safari', version=(5, 1), version_string='5.1')
 user_agent.browser.family  # returns 'Mobile Safari'
 user_agent.browser.version  # returns (5, 1)
 user_agent.browser.version_string   # returns '5.1'
 
 # Accessing user agent's operating system properties
-user_agent.os  # returns OperatingSystem(family=u'iOS', version=(5, 1), version_string='5.1')
+user_agent.os  # returns OperatingSystem(family='iOS', version=(5, 1), version_string='5.1')
 user_agent.os.family  # returns 'iOS'
 user_agent.os.version  # returns (5, 1)
 user_agent.os.version_string  # returns '5.1'
 
 # Accessing user agent's device properties
-user_agent.device  # returns Device(family=u'iPhone', brand=u'Apple', model=u'iPhone')
+user_agent.device  # returns Device(family='iPhone', brand='Apple', model='iPhone')
 user_agent.device.family  # returns 'iPhone'
 user_agent.device.brand # returns 'Apple'
 user_agent.device.model # returns 'iPhone'
@@ -53,7 +71,10 @@ user_agent.device.model # returns 'iPhone'
 str(user_agent) # returns "iPhone / iOS 5.1 / Mobile Safari 5.1"
 ```
 
-`user_agents` also expose a few other more "sophisticated" attributes that are derived from one or more basic attributes defined above. As for now, these attributes should correctly identify popular platforms/devices, pull requests to support smaller ones are always welcome.
+`user_agents` also exposes a few other more "sophisticated" attributes that are
+derived from one or more basic attributes defined above. These attributes should
+correctly identify popular platforms/devices; pull requests to support smaller
+ones are always welcome.
 
 Currently these attributes are supported:
 
@@ -88,26 +109,6 @@ user_agent.is_pc # returns False
 user_agent.is_bot # returns False
 str(user_agent) # returns "Samsung GT-I9300 / Android 4.0.4 / Android 4.0.4"
 
-# iPad's user agent string
-ua_string = 'Mozilla/5.0(iPad; U; CPU iPhone OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B314 Safari/531.21.10'
-user_agent = parse(ua_string)
-user_agent.is_mobile # returns False
-user_agent.is_tablet # returns True
-user_agent.is_touch_capable # returns True
-user_agent.is_pc # returns False
-user_agent.is_bot # returns False
-str(user_agent) # returns "iPad / iOS 3.2 / Mobile Safari 4.0.4"
-
-# Kindle Fire's user agent string
-ua_string = 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_3; en-us; Silk/1.1.0-80) AppleWebKit/533.16 (KHTML, like Gecko) Version/5.0 Safari/533.16 Silk-Accelerated=true'
-user_agent = parse(ua_string)
-user_agent.is_mobile # returns False
-user_agent.is_tablet # returns True
-user_agent.is_touch_capable # returns True
-user_agent.is_pc # returns False
-user_agent.is_bot # returns False
-str(user_agent) # returns "Kindle / Android / Amazon Silk 1.1.0-80"
-
 # Touch capable Windows 8 device
 ua_string = 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0; Touch)'
 user_agent = parse(ua_string)
@@ -119,61 +120,24 @@ user_agent.is_bot # returns False
 str(user_agent) # returns "PC / Windows 8 / IE 10"
 ```
 
-Running Tests
--------------
+## Running Tests
 
-    python -m unittest discover
+    python -m unittest user_agents.tests
 
-Changelog
----------
-### Version 2.2.0 (2020-08-23)
-* `ua-parser` >= 0.10.0 is required. Thanks @jnozsc!
-* Added `get_device()`, `get_os()` and `get_browser()` instance methods
-to `UserAgent`. Thanks @rodrigondec!
+## Changelog
 
-### Version 2.1 (2020-02-08)
+### Version 3.0.0
 
-* `python-user-agents` now require `ua-parser>=0.9.0`. Thanks @jnozsc!
-* Properly detect Chrome Mobile browser families. Thanks @jnozsc!
+* Released as `user-agents-ng`, a maintained successor to `user-agents`.
+* Tested support for Python 3.9–3.14; dropped Python 2.
+* Migrated packaging to `pyproject.toml`; added `py.typed` and type hints.
+* Replaced Travis CI with GitHub Actions (Linux + Windows).
 
-### Version 2.0 (2019-04-07)
+For the pre-3.0 history, see the original
+[project changelog](https://github.com/selwin/python-user-agents).
 
-* `python-user-agents` now require `ua-parser>=0.8.0`. Thanks @IMDagger!
+## Credits
 
-### Version 1.1
-
-* Fixes packaging issue
-
-### Version 1.0
-
-* Adds compatibility with `ua-parser` 0.4.0
-* Access to more device information in `user_agent.device.brand` and `user_agent.device.model`
-
-### Version 0.3.2
-
-* Better mobile detection
-* Better PC detection
-
-### Version 0.3.1
-
-* user\_agent.is\_mobile returns True when mobile spider is detected
-
-### Version 0.3.0
-
-* Added **str**/**unicode** methods for convenience of pretty string
-
-### Version 0.2.0
-
-* Fixed errors when running against newer versions if ua-parser
-* Support for Python 3
-
-### Version 0.1.1
-
-* Added `is_bot` property
-* Symbian OS devices are now detected as a mobile device
-
-### Version 0.1
-
-* Initial release
-
-Developed by the cool guys at [Stamps](http://stamps.co.id).
+Originally created by Selwin Ong and the team at
+[Stamps](http://stamps.co.id). Maintained as `user-agents-ng` by
+[Saif Ali](https://github.com/SAKMZ). Licensed under the MIT License.
