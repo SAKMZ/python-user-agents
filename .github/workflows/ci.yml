@@ -29,3 +29,8 @@ jobs:
 
       - name: Run tests
         run: python -m unittest -v user_agents.tests
+
+      - name: Run tests with the fast parser
+        run: |
+          python -m pip install -e ".[fast]"
+          python -m unittest -v user_agents.tests

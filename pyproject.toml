@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "user-agents-ng"
-version = "3.0.0"
+version = "3.1.0"
 description = "A maintained successor to user-agents: identify devices (phones, tablets) and their capabilities by parsing browser user agent strings."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -18,7 +18,7 @@ maintainers = [
 ]
 keywords = ["user agent", "user-agents", "browser", "device", "detection", "parser", "mobile", "tablet", "bot"]
 dependencies = [
-    "ua-parser>=0.10.0",
+    "ua-parser>=1.0.0",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -36,6 +36,11 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.optional-dependencies]
+fast = [
+    "ua-parser[regex]>=1.0.0",
 ]
 
 [project.urls]

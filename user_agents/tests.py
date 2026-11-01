@@ -245,6 +245,78 @@ class UserAgentsTest(unittest.TestCase):
         self.assertEqual(ua_str, "iPhone / iOS 5.1 / Mobile Safari 5.1")
         self.assertIsInstance(ua_str, str)
 
+    def test_missing_user_agent(self):
+        for ua_string in (None, '', b''):
+            ua = parse(ua_string)
+            self.assertEqual(ua.ua_string, '')
+            self.assertEqual(str(ua), 'Other / Other / Other')
+            self.assertFalse(ua.is_bot)
+
+    def test_bytes_user_agent(self):
+        ua = parse(iphone_ua_string.encode('latin-1'))
+        self.assertEqual(ua.ua_string, iphone_ua_string)
+        self.assertTrue(ua.is_mobile)
+
+    def test_is_bot_undetected_by_ua_parser(self):
+        for ua_string in (
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15 (Applebot/0.1; +http://www.apple.com/go/applebot)',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 (Amazonbot/0.1; +https://developer.amazon.com/support/amazonbot)',
+            'Mozilla/5.0 (Linux; Android 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 (compatible; Bytespider; spider-feedback@bytedance.com)',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36',
+            'ExampleFetcher/1.0 (contact: ops@example.com)',
+            'Mozilla/5.0 (compatible; ExampleCrawler; http://example.com)',
+            'SomeBot/2.3',
+        ):
+            self.assertTrue(parse(ua_string).is_bot, msg=ua_string)
+
+    def test_is_bot_ignores_real_browsers(self):
+        for ua_string in (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0',
+            'Mozilla/5.0 (Linux; Android 11; CUBOT_X50) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 9; CUBOT P20 Build/PPR1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            iphone_ua_string,
+            'curl/8.7.1',
+            'okhttp/4.12.0',
+        ):
+            self.assertFalse(parse(ua_string).is_bot, msg=ua_string)
+
+    def test_is_tv(self):
+        for ua_string in (
+            'Mozilla/5.0 (SMART-TV; Linux; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) 94.0.4606.31/7.0 TV Safari/537.36',
+            'Mozilla/5.0 (SMART-TV; X11; Linux armv7l) AppleWebKit/537.42 (KHTML, like Gecko) Safari/537.42',
+            'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 WebAppManager',
+            'Mozilla/5.0 (Linux; Android 12; BRAVIA 4K UR3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 9; AFTKA) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 CrKey/1.56.500000',
+            'Roku/DVP-12.5 (12.5.0.4130-AE)',
+        ):
+            ua = parse(ua_string)
+            self.assertTrue(ua.is_tv, msg=ua_string)
+            self.assertFalse(ua.is_tablet, msg=ua_string)
+            self.assertFalse(ua.is_mobile, msg=ua_string)
+            self.assertFalse(ua.is_pc, msg=ua_string)
+            self.assertFalse(ua.is_touch_capable, msg=ua_string)
+
+    def test_is_not_tv(self):
+        for ua in (iphone_ua, ipad_ua, galaxy_s3_ua, nexus_7_ua, ie_ua, mac_safari_ua, ubuntu_firefox_ua):
+            self.assertFalse(ua.is_tv, msg=ua.ua_string)
+
+    def test_android_firefox_tablet(self):
+        ua = parse('Mozilla/5.0 (Android 14; Tablet; rv:140.0) Gecko/140.0 Firefox/140.0')
+        self.assertTrue(ua.is_tablet)
+        self.assertFalse(ua.is_mobile)
+
+    def test_android_dalvik_is_mobile(self):
+        ua = parse('Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 6P Build/N2G47O)')
+        self.assertFalse(ua.is_tablet)
+        self.assertTrue(ua.is_mobile)
+
+    def test_kaios_is_mobile(self):
+        ua = parse('Mozilla/5.0 (Mobile; Nokia 8110 4G; rv:48.0) Gecko/48.0 Firefox/48.0 KAIOS/2.5')
+        self.assertTrue(ua.is_mobile)
+        self.assertFalse(ua.is_tablet)
+
 
 with open(os.path.join(os.path.dirname(__file__), 'devices.json')) as f:
     devices = json.load(f)
@@ -254,6 +326,7 @@ def test_wrapper(items):
     def test_func(self):
         attrs = ('is_bot', 'is_mobile',
                  'is_pc', 'is_tablet', 'is_touch_capable')
+        self.assertFalse(items['user_agent'].is_tv)
         for attr in attrs:
             self.assertEqual(
                 getattr(items['user_agent'], attr), items[attr], msg=attr)

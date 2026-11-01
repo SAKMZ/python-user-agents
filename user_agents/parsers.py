@@ -1,6 +1,7 @@
-from typing import Any, NamedTuple, Optional
+import re
+from typing import Any, NamedTuple, Optional, Union
 
-from ua_parser import user_agent_parser
+import ua_parser
 
 
 MOBILE_DEVICE_FAMILIES = (
@@ -26,6 +27,7 @@ MOBILE_OS_FAMILIES = (
     'Windows CE',
     'Windows Mobile',
     'Maemo',
+    'KaiOS',
 )
 
 MOBILE_BROWSER_FAMILIES = (
@@ -47,6 +49,7 @@ TABLET_DEVICE_FAMILIES = (
     'Galaxy Tab',
     'Xoom',
     'Dell Streak',
+    'Generic Tablet',
 )
 
 TABLET_DEVICE_BRANDS = (
@@ -88,6 +91,23 @@ EMAIL_PROGRAM_FAMILIES = {
     'kmail2',
     'YahooMobileMail',
 }
+
+# Catches bots ua-parser doesn't know about yet
+BOT_UA_PATTERN = re.compile(
+    r'\+https?://'  # Contact URL, e.g. (+http://example.com/bot.html)
+    r'|@[\w-]+\.[a-z]{2,}'  # Contact email address
+    r'|(?:bot|crawler|spider)/\d'  # Product token, e.g. Applebot/0.1
+    r'|compatible; [\w.-]*(?:bot|crawler|spider)\b'  # e.g. compatible; Bytespider
+    r'|HeadlessChrome/|PhantomJS/',
+    re.IGNORECASE
+)
+
+TV_UA_PATTERN = re.compile(
+    r'smart[- ]?tv|hbbtv|google ?tv|android ?tv|apple ?tv|web0s|netcast|vidaa'
+    r'|\broku\b|bravia|crkey'
+    r'|(?-i:\bAFT[A-Z0-9]{1,6}\b)',  # Amazon Fire TV models, e.g. AFTKA
+    re.IGNORECASE
+)
 
 
 def verify_attribute(attribute: Any) -> Any:
@@ -163,12 +183,19 @@ def parse_device(family: str, brand: Optional[str], model: Optional[str]) -> Dev
 
 class UserAgent:
 
-    def __init__(self, user_agent_string: str):
-        ua_dict = user_agent_parser.Parse(user_agent_string)
+    def __init__(self, user_agent_string: Union[str, bytes, None]):
+        # Frameworks return None for a missing header, raw headers are bytes
+        if user_agent_string is None:
+            user_agent_string = ''
+        elif isinstance(user_agent_string, bytes):
+            user_agent_string = user_agent_string.decode('latin-1')
+
+        result = ua_parser.parse(user_agent_string).with_defaults()
+        browser, os = result.user_agent, result.os
         self.ua_string = user_agent_string
-        self.os = parse_operating_system(**ua_dict['os'])
-        self.browser = parse_browser(**ua_dict['user_agent'])
-        self.device = parse_device(**ua_dict['device'])
+        self.os = parse_operating_system(os.family, os.major, os.minor, os.patch, os.patch_minor)
+        self.browser = parse_browser(browser.family, browser.major, browser.minor, browser.patch, browser.patch_minor)
+        self.device = parse_device(result.device.family, result.device.brand, result.device.model)
 
     def __str__(self) -> str:
         return "{device} / {os} / {browser}".format(
@@ -182,9 +209,9 @@ class UserAgent:
 
     def _is_android_tablet(self) -> bool:
         # Newer Android tablets don't have "Mobile" in their user agent string,
-        # older ones like Galaxy Tab still have "Mobile" though they're not
-        return ('Mobile Safari' not in self.ua_string and
-                self.browser.family != "Firefox Mobile")
+        # older ones like Galaxy Tab still have "Mobile" though they're not.
+        # Dalvik never says either way, so assume the far more common phone.
+        return 'Mobile' not in self.ua_string and 'Dalvik' not in self.ua_string
 
     def _is_blackberry_touch_capable_device(self) -> bool:
         # A helper to determine whether a BB phone has touch capabilities
@@ -206,6 +233,9 @@ class UserAgent:
 
     @property
     def is_tablet(self) -> bool:
+        # ua-parser reports Android TVs as Generic_Android_Tablet
+        if self.is_tv:
+            return False
         if self.device.family in TABLET_DEVICE_FAMILIES:
             return True
         if self.device.brand in TABLET_DEVICE_BRANDS:
@@ -225,7 +255,7 @@ class UserAgent:
         # First check for mobile device and mobile browser families
         if self.device.family in MOBILE_DEVICE_FAMILIES:
             return True
-        if self.is_tablet or self.is_pc:
+        if self.is_tablet or self.is_pc or self.is_tv:
             return False
         if self.browser.family in MOBILE_BROWSER_FAMILIES:
             return True
@@ -254,6 +284,8 @@ class UserAgent:
     @property
     def is_touch_capable(self) -> bool:
         # TODO: detect touch capable Nokia devices
+        if self.is_tv:
+            return False
         if self.os.family in TOUCH_CAPABLE_OS_FAMILIES:
             return True
         if self.device.family in TOUCH_CAPABLE_DEVICE_FAMILIES:
@@ -271,7 +303,8 @@ class UserAgent:
     def is_pc(self) -> bool:
         if self.device.family in MOBILE_DEVICE_FAMILIES or \
            self.device.family in TABLET_DEVICE_FAMILIES or \
-           self.device.brand in TABLET_DEVICE_BRANDS:
+           self.device.brand in TABLET_DEVICE_BRANDS or \
+           self.is_tv:
             return False
         # Returns True for "PC" devices (Windows, Mac and Linux)
         if 'Windows NT' in self.ua_string or self.os.family in PC_OS_FAMILIES or \
@@ -292,13 +325,19 @@ class UserAgent:
         return False
 
     @property
+    def is_tv(self) -> bool:
+        return TV_UA_PATTERN.search(self.ua_string) is not None
+
+    @property
     def is_bot(self) -> bool:
-        return self.device.family == 'Spider'
+        if self.device.family == 'Spider':
+            return True
+        return BOT_UA_PATTERN.search(self.ua_string) is not None
 
     @property
     def is_email_client(self) -> bool:
         return self.browser.family in EMAIL_PROGRAM_FAMILIES
 
 
-def parse(user_agent_string: str) -> UserAgent:
+def parse(user_agent_string: Union[str, bytes, None]) -> UserAgent:
     return UserAgent(user_agent_string)
