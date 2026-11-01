@@ -25,6 +25,11 @@ to do the actual parsing of the raw user agent string.
 
     pip install user-agents-ng
 
+For a roughly 20x parsing speedup on uncached user agents, install the optional
+Rust-backed parser too. It's a drop-in change, no code needs updating:
+
+    pip install "user-agents-ng[fast]"
+
 ### Migrating from `user-agents`
 
 `user-agents-ng` is a drop-in replacement. Swap the dependency and your code
@@ -81,8 +86,13 @@ Currently these attributes are supported:
 * `is_mobile`: whether user agent is identified as a mobile phone (iPhone, Android phones, Blackberry, Windows Phone devices etc)
 * `is_tablet`: whether user agent is identified as a tablet device (iPad, Kindle Fire, Nexus 7 etc)
 * `is_pc`: whether user agent is identified to be running a traditional "desktop" OS (Windows, OS X, Linux)
+* `is_tv`: whether user agent is identified as a smart TV or streaming device (Samsung Tizen, LG webOS, Android TV, Fire TV, Roku, Chromecast etc)
 * `is_touch_capable`: whether user agent has touch capabilities
-* `is_bot`: whether user agent is a search engine crawler/spider
+* `is_bot`: whether user agent is a crawler, spider or headless browser. Besides the bots ua-parser knows about, this catches any user agent with a bot-style product token (`Applebot/0.1`), a contact URL (`+http://example.com/bot`) or a contact email address
+* `is_email_client`: whether user agent is an email client (Outlook, Thunderbird, Apple Mail etc)
+
+`parse()` also accepts `bytes` and `None`, so a raw header or a request with no
+`User-Agent` header at all won't raise an exception.
 
 For example:
 
@@ -97,7 +107,7 @@ user_agent.is_tablet # returns False
 user_agent.is_touch_capable # returns False
 user_agent.is_pc # returns False
 user_agent.is_bot # returns False
-str(user_agent) # returns "BlackBerry 9700 / BlackBerry OS 5 / BlackBerry 9700"
+str(user_agent) # returns "BlackBerry 9700 / BlackBerry OS 5.0.0 / BlackBerry 9700"
 
 # Now a Samsung Galaxy S3
 ua_string = 'Mozilla/5.0 (Linux; U; Android 4.0.4; en-gb; GT-I9300 Build/IMM76D) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30'
@@ -117,7 +127,7 @@ user_agent.is_tablet # returns False
 user_agent.is_touch_capable # returns True
 user_agent.is_pc # returns True
 user_agent.is_bot # returns False
-str(user_agent) # returns "PC / Windows 8 / IE 10"
+str(user_agent) # returns "PC / Windows 8 / IE 10.0"
 ```
 
 ## Running Tests
@@ -125,6 +135,15 @@ str(user_agent) # returns "PC / Windows 8 / IE 10"
     python -m unittest user_agents.tests
 
 ## Changelog
+
+### Version 3.1.0
+
+* Added `is_tv` for smart TVs and streaming devices, which no longer count as touch capable tablets, phones or PCs.
+* `is_bot` now catches bots missed by ua-parser, like Applebot, Amazonbot, Bytespider and headless Chrome.
+* Added the `user-agents-ng[fast]` extra, which parses about 20x faster.
+* `parse()` accepts `None` and `bytes` instead of raising `TypeError`.
+* Firefox on Android tablets is now a tablet, Dalvik clients are no longer tablets, and KaiOS is mobile.
+* Now uses the current `ua-parser` API and requires `ua-parser>=1.0.0`, which keeps detection data up to date.
 
 ### Version 3.0.0
 
